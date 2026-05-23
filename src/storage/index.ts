@@ -310,3 +310,15 @@ export async function loadComparison(): Promise<string | undefined> {
 
     return await db.get("settings", "comparison");
 }
+
+export async function getSplitsOrder(): Promise<number[] | undefined> {
+    const db = await getDb();
+
+    return await db.get("settings", "splitsOrder");
+}
+
+export async function storeSplitsOrder(order: number[]): Promise<void> {
+    const db = await getDb();
+
+    await db.put("settings", order, "splitsOrder");
+}

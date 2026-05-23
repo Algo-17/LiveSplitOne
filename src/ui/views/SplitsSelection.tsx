@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     getSplitsInfos,
+    getSplitsOrder,
+    storeSplitsOrder,
     SplitsInfo,
     deleteSplits as storageDeleteSplits,
     copySplits as storageCopySplits,
@@ -28,6 +30,7 @@ import {
     Copy,
     Download,
     FolderOpen,
+    GripVertical,
     Plus,
     Save,
     SquarePen,
@@ -37,6 +40,24 @@ import {
 
 import classes from "../../css/SplitsSelection.module.css";
 import sidebarClasses from "../../css/Sidebar.module.css";
+
+function applyOrder(
+    splitsInfos: Array<[number, SplitsInfo]>,
+    order: number[] | undefined,
+): Array<[number, SplitsInfo]> {
+    if (!order || order.length === 0) return splitsInfos;
+
+    const infoMap = new Map(splitsInfos.map(([k, v]) => [k, v]));
+    const orderedSet = new Set(order);
+
+    const ordered = order
+        .filter((k) => infoMap.has(k))
+        .map((k) => [k, infoMap.get(k)!] as [number, SplitsInfo]);
+
+    const appended = splitsInfos.filter(([k]) => !orderedSet.has(k));
+
+    return [...ordered, ...appended];
+}
 
 export interface EditingInfo {
     splitsKey?: number;
@@ -67,17 +88,51 @@ export function SplitsSelection(props: Props) {
     const [splitsInfos, setSplitsInfos] = useState<
         Array<[number, SplitsInfo]> | undefined
     >();
+    const [splitsOrder, setSplitsOrder] = useState<number[] | undefined>();
+
     useEffect(() => {
-        async function fetchSplitsInfos() {
-            const splitsInfos = await getSplitsInfos();
-            setSplitsInfos(splitsInfos);
+        async function fetchData() {
+            const [infos, order] = await Promise.all([
+                getSplitsInfos(),
+                getSplitsOrder(),
+            ]);
+            setSplitsInfos(infos);
+            setSplitsOrder(order);
         }
-        fetchSplitsInfos();
+        fetchData();
     }, []);
 
     const refreshDb = async () => {
-        const splitsInfos = await getSplitsInfos();
-        setSplitsInfos(splitsInfos);
+        const infos = await getSplitsInfos();
+        setSplitsInfos(infos);
+        setSplitsOrder((prev) => {
+            if (!prev) return prev;
+            const validKeys = new Set(infos.map(([k]) => k));
+            const cleaned = prev.filter((k) => validKeys.has(k));
+            if (cleaned.length !== prev.length) {
+                storeSplitsOrder(cleaned);
+            }
+            return cleaned;
+        });
+    };
+
+    const orderedSplitsInfos =
+        splitsInfos !== undefined
+            ? applyOrder(splitsInfos, splitsOrder)
+            : undefined;
+
+    const reorderSplits = (fromKey: number, toKey: number | undefined) => {
+        const current = orderedSplitsInfos?.map(([k]) => k) ?? [];
+        const newOrder = current.filter((k) => k !== fromKey);
+        if (toKey === undefined) {
+            newOrder.push(fromKey);
+        } else {
+            const toIdx = newOrder.indexOf(toKey);
+            if (toIdx === -1) return;
+            newOrder.splice(toIdx, 0, fromKey);
+        }
+        setSplitsOrder(newOrder);
+        storeSplitsOrder(newOrder);
     };
 
     const saveSplits = async () => {
@@ -103,8 +158,9 @@ export function SplitsSelection(props: Props) {
     return props.callbacks.renderViewWithSidebar(
         <View
             {...props}
-            splitsInfos={splitsInfos}
+            splitsInfos={orderedSplitsInfos}
             refreshDb={refreshDb}
+            reorderSplits={reorderSplits}
             lang={lang}
         />,
         <SideBar
@@ -125,6 +181,7 @@ function View({
     callbacks,
     splitsInfos,
     refreshDb,
+    reorderSplits,
     lang,
 }: {
     commandSink: LSOCommandSink;
@@ -132,8 +189,99 @@ function View({
     callbacks: Callbacks;
     splitsInfos?: Array<[number, SplitsInfo]>;
     refreshDb: () => Promise<void>;
+    reorderSplits: (fromKey: number, toKey: number | undefined) => void;
     lang: Language | undefined;
 }) {
+    const [dragKey, setDragKey] = useState<number | null>(null);
+    const dragKeyRef = useRef<number | null>(null);
+    const tableRef = useRef<HTMLDivElement>(null);
+    const dragOverRowRef = useRef<HTMLElement | null>(null);
+    const dropAfterRef = useRef(false);
+    const reorderSplitsRef = useRef(reorderSplits);
+    useEffect(() => {
+        reorderSplitsRef.current = reorderSplits;
+    });
+
+    const clearDragOver = useCallback(() => {
+        if (dragOverRowRef.current) {
+            dragOverRowRef.current
+                .querySelector("[data-drop-indicator]")
+                ?.remove();
+            dragOverRowRef.current = null;
+        }
+        dropAfterRef.current = false;
+    }, []);
+
+    useEffect(() => {
+        const table = tableRef.current;
+        if (!table) return;
+
+        const handleDragOver = (e: DragEvent) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+            const row = (e.target as Element).closest(
+                "[data-splits-key]",
+            ) as HTMLElement | null;
+            if (!row) return;
+
+            const rect = row.getBoundingClientRect();
+            const dropAfter = e.clientY > rect.top + rect.height / 2;
+
+            if (row === dragOverRowRef.current && dropAfter === dropAfterRef.current) return;
+            clearDragOver();
+            dragOverRowRef.current = row;
+            dropAfterRef.current = dropAfter;
+            const indicator = document.createElement("div");
+            indicator.classList.add(classes.dropIndicator);
+            if (dropAfter) indicator.classList.add(classes.dropIndicatorEnd);
+            indicator.dataset.dropIndicator = "";
+            if (dropAfter) {
+                row.append(indicator);
+            } else {
+                row.prepend(indicator);
+            }
+        };
+
+        const handleDragLeave = (e: DragEvent) => {
+            if (!table.contains(e.relatedTarget as Node)) {
+                clearDragOver();
+            }
+        };
+
+        const handleDrop = (e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetRow = dragOverRowRef.current;
+            if (dragKeyRef.current !== null && targetRow) {
+                if (dropAfterRef.current) {
+                    const nextRow = targetRow.nextElementSibling as HTMLElement | null;
+                    const toKey = nextRow ? Number(nextRow.dataset.splitsKey) : undefined;
+                    reorderSplitsRef.current(dragKeyRef.current, toKey);
+                } else {
+                    const toKey = Number(targetRow.dataset.splitsKey);
+                    if (dragKeyRef.current !== toKey) {
+                        reorderSplitsRef.current(dragKeyRef.current, toKey);
+                    }
+                }
+            }
+            dragKeyRef.current = null;
+            setDragKey(null);
+            clearDragOver();
+        };
+
+        table.addEventListener("dragover", handleDragOver);
+        table.addEventListener("dragleave", handleDragLeave);
+        table.addEventListener("drop", handleDrop);
+
+        return () => {
+            table.removeEventListener("dragover", handleDragOver);
+            table.removeEventListener("dragleave", handleDragLeave);
+            table.removeEventListener("drop", handleDrop);
+        };
+        // splitsInfos is the dep that causes the table to appear in the DOM;
+        // including it ensures listeners are attached once the ref is populated.
+    }, [clearDragOver, splitsInfos]);
+
     const storeRun = async (run: Run) => {
         try {
             if (run.len() === 0) {
@@ -310,9 +458,13 @@ function View({
                     </button>
                 </div>
                 {splitsInfos?.length > 0 && (
-                    <div className={classes.splitsTable}>
+                    <div
+                        className={classes.splitsTable}
+                        ref={tableRef}
+                    >
                         {splitsInfos.map(([key, info]) => (
                             <SavedSplitsRow
+                                key={key}
                                 openedSplitsKey={openedSplitsKey}
                                 splitsKey={key}
                                 info={info}
@@ -321,6 +473,16 @@ function View({
                                 exportSplits={exportSplits}
                                 copySplits={copySplits}
                                 deleteSplits={deleteSplits}
+                                isDragging={dragKey === key}
+                                onDragStart={() => {
+                                    dragKeyRef.current = key;
+                                    setDragKey(key);
+                                }}
+                                onDragEnd={() => {
+                                    dragKeyRef.current = null;
+                                    setDragKey(null);
+                                    clearDragOver();
+                                }}
                                 lang={lang}
                             />
                         ))}
@@ -343,6 +505,9 @@ function SavedSplitsRow({
     exportSplits,
     copySplits,
     deleteSplits,
+    isDragging,
+    onDragStart,
+    onDragEnd,
     lang,
 }: {
     openedSplitsKey?: number;
@@ -353,6 +518,9 @@ function SavedSplitsRow({
     exportSplits: (key: number, info: SplitsInfo) => void;
     copySplits: (key: number) => void;
     deleteSplits: (key: number) => void;
+    isDragging: boolean;
+    onDragStart: () => void;
+    onDragEnd: () => void;
     lang: Language | undefined;
 }) {
     const isOpened = splitsKey === openedSplitsKey;
@@ -360,9 +528,42 @@ function SavedSplitsRow({
     if (isOpened) {
         classNames.push(classes.selected);
     }
+    if (isDragging) {
+        classNames.push(classes.dragging);
+    }
 
     return (
-        <div className={classNames.join(" ")} key={splitsKey}>
+        <div
+            className={classNames.join(" ")}
+            data-splits-key={splitsKey}
+        >
+            <div
+                className={classes.dragHandle}
+                draggable
+                onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", "");
+                    const row = e.currentTarget.parentElement;
+                    if (row) {
+                        const rect = row.getBoundingClientRect();
+                        // Inline the computed background so the ghost is opaque —
+                        // CSS variables don't resolve in browser drag-image snapshots.
+                        row.style.backgroundColor =
+                            window.getComputedStyle(row).backgroundColor;
+                        e.dataTransfer.setDragImage(
+                            row,
+                            e.clientX - rect.left,
+                            e.clientY - rect.top,
+                        );
+                        requestAnimationFrame(() => {
+                            row.style.backgroundColor = "";
+                        });
+                    }
+                    onDragStart();
+                }}
+                onDragEnd={onDragEnd}
+            >
+                <GripVertical size={16} />
+            </div>
             <SplitsTitle
                 game={info.game}
                 category={info.category}

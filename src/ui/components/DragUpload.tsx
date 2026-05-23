@@ -23,7 +23,11 @@ export function DragUpload({
             return;
         }
 
+        const isFileDrag = (event: DragEvent) =>
+            event.dataTransfer?.types.includes("Files") ?? false;
+
         const handleDragEnter = (event: DragEvent) => {
+            if (!isFileDrag(event)) return;
             event.preventDefault();
             event.stopPropagation();
 
@@ -45,11 +49,13 @@ export function DragUpload({
         };
 
         const handleDragOver = (event: DragEvent) => {
+            if (!isFileDrag(event)) return;
             event.preventDefault();
             event.stopPropagation();
         };
 
         const handleDrop = (event: DragEvent) => {
+            if (!isFileDrag(event)) return;
             event.preventDefault();
             event.stopPropagation();
 

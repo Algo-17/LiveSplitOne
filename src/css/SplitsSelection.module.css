@@ -43,6 +43,8 @@
 }
 
 .splitsRow {
+    position: relative;
+    background-color: var(--dark-row-color);
     display: flex;
     gap: var(--ui-large-margin);
     flex-wrap: nowrap;
@@ -65,10 +67,47 @@
         color: var(--selected-row-text-color);
     }
 
+    &.dragging {
+        opacity: 0.7;
+    }
+
     :global(.is-mobile) & {
         width: 100%;
         box-sizing: border-box;
         height: calc(40px + 2 * var(--ui-margin));
+    }
+}
+
+.dropIndicator {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background-color: var(--link-color);
+    pointer-events: none;
+    z-index: 100;
+
+    &.dropIndicatorEnd {
+        top: auto;
+        bottom: -3px;
+    }
+}
+
+.dragHandle {
+    cursor: grab;
+    color: var(--main-text-color);
+    opacity: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+        opacity: 100%;
+    }
+
+    &:active {
+        cursor: grabbing;
     }
 }
 
