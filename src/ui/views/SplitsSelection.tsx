@@ -219,9 +219,9 @@ function View({
         const handleDragOver = (e: DragEvent) => {
             e.preventDefault();
             if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-            const row = (e.target as Element).closest(
+            const row = (e.target as Element).closest<HTMLElement>(
                 "[data-splits-key]",
-            ) as HTMLElement | null;
+            );
             if (!row) return;
 
             const rect = row.getBoundingClientRect();
