@@ -361,6 +361,22 @@ export class LiveSplit extends React.Component<Props, State> {
                 this.notifyAboutUpdate(),
             );
         }
+
+        const autoServerUrl = new URLSearchParams(window.location.search).get("server");
+        if (autoServerUrl) {
+            try {
+                this.onServerConnectionOpened(
+                    new LiveSplitServer(
+                        autoServerUrl,
+                        () => this.forceUpdate(),
+                        () => this.onServerConnectionClosed(),
+                        this.state.commandSink,
+                    ),
+                );
+            } catch {
+                // Toast is already shown by LiveSplitServer constructor on failure.
+            }
+        }
     }
 
     public componentDidUpdate() {
