@@ -62,6 +62,7 @@ import { createRoot } from "react-dom/client";
 import LiveSplitIcon from "../assets/icon.svg";
 import timerFont from "../css/timer.woff";
 import firaFont from "../css/FiraSans-Regular.woff";
+import vt323Font from "../css/VT323-Regular.woff2";
 
 import "react-toastify/dist/ReactToastify.css";
 import classes from "../css/LiveSplit.module.css";
@@ -1341,9 +1342,15 @@ async function popOut(
 
     const timerFontFace = new FontFace("timer", `url(${timerFont})`);
     const firaFontFace = new FontFace("fira", `url(${firaFont})`);
+    const vt323FontFace = new FontFace("VT323", `url(${vt323Font})`);
     childDoc.fonts.add(timerFontFace);
     childDoc.fonts.add(firaFontFace);
-    await Promise.all([timerFontFace.load(), firaFontFace.load()]);
+    childDoc.fonts.add(vt323FontFace);
+    await Promise.all([
+        timerFontFace.load(),
+        firaFontFace.load(),
+        vt323FontFace.load(),
+    ]);
 
     const layoutState = LayoutState.new();
     const urlCache = new UrlCache();
