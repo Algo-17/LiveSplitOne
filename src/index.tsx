@@ -44,7 +44,11 @@ try {
     try {
         const promises = [];
         for (const fontFace of document.fonts) {
-            if (fontFace.family === "timer" || fontFace.family === "fira") {
+            if (
+                fontFace.family === "timer" ||
+                fontFace.family === "fira" ||
+                fontFace.family === "VT323"
+            ) {
                 promises.push(fontFace.load());
             }
         }

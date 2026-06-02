@@ -10,6 +10,12 @@
     src: url(FiraSans-Regular.woff);
 }
 
+@font-face {
+    font-family: VT323;
+    font-display: swap;
+    src: url(VT323-Regular.woff2) format("woff2");
+}
+
 body {
     font-family: "fira", sans-serif;
     color: var(--main-text-color);
