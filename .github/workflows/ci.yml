@@ -97,7 +97,12 @@ jobs:
             - name: Run eslint
               run: npm run lint
 
-            - name: Build Frontend
+            - name: Run TypeScript type checking (Web)
+              if: matrix.platform == 'web'
+              run: npm run typecheck
+
+            - name: Build Frontend (Web)
+              if: matrix.platform == 'web'
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: npm run publish

@@ -5,9 +5,31 @@
         "moduleResolution": "Bundler",
         "strict": true,
         "noImplicitAny": true,
+        "exactOptionalPropertyTypes": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "noUncheckedIndexedAccess": true,
+        "noUncheckedSideEffectImports": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        // DOM, WebWorker, and Workbox declarations currently conflict when
+        // TypeScript checks their third-party declaration files together.
         "skipLibCheck": true,
+        "verbatimModuleSyntax": true,
         "types": ["node"],
         "lib": ["ES2024", "DOM", "WebWorker"]
     },
-    "include": ["vite.config.ts", "src/type-definitions/babel-core-shim.d.ts"]
+    "include": [
+        "buildCore.ts",
+        "eslint.config.ts",
+        "vite.config.ts",
+        "src/type-definitions/babel-core-shim.d.ts"
+    ]
 }

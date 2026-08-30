@@ -1,18 +1,21 @@
 import * as React from "react";
 import { expect } from "../../../util/OptionUtil";
-import { type AccuracyJson, type Language } from "../../../livesplit-core";
+import {
+    type SubsplitDisplayMode as SubsplitDisplayModeType,
+    type Language,
+} from "../../../livesplit-core";
 import { type SettingValueFactory } from ".";
 import { Label, resolve } from "../../../localization";
 
 import tableClasses from "../../../css/Table.module.css";
 
-export function Accuracy<T>({
+export function SubsplitDisplayMode<T>({
     value,
     setValue,
     factory,
     lang,
 }: {
-    value: AccuracyJson;
+    value: SubsplitDisplayModeType;
     setValue: (value: T) => void;
     factory: SettingValueFactory<T>;
     lang: Language | undefined;
@@ -24,24 +27,24 @@ export function Accuracy<T>({
                 onChange={(e) =>
                     setValue(
                         expect(
-                            factory.fromAccuracy(e.target.value),
-                            "Unexpected Accuracy",
+                            factory.fromSubsplitDisplayMode(e.target.value),
+                            "Unexpected SubsplitDisplayMode",
                             lang,
                         ),
                     )
                 }
             >
-                <option value="Seconds">
-                    {resolve(Label.AccuracySeconds, lang)}
+                <option value="Flat">
+                    {resolve(Label.SubsplitDisplayModeFlat, lang)}
                 </option>
-                <option value="Tenths">
-                    {resolve(Label.AccuracyTenths, lang)}
+                <option value="CurrentGroupExpanded">
+                    {resolve(
+                        Label.SubsplitDisplayModeCurrentGroupExpanded,
+                        lang,
+                    )}
                 </option>
-                <option value="Hundredths">
-                    {resolve(Label.AccuracyHundredths, lang)}
-                </option>
-                <option value="Milliseconds">
-                    {resolve(Label.AccuracyMilliseconds, lang)}
+                <option value="AllGroupsExpanded">
+                    {resolve(Label.SubsplitDisplayModeAllGroupsExpanded, lang)}
                 </option>
             </select>
         </div>

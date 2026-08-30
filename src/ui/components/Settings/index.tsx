@@ -1,12 +1,12 @@
 import * as React from "react";
 import {
-    Language,
-    SettingsDescriptionValueJson,
+    type Language,
+    type SettingsDescriptionValueJson,
 } from "../../../livesplit-core";
-import { assertNever, Option } from "../../../util/OptionUtil";
+import { assertNever, type Option } from "../../../util/OptionUtil";
 import { HotkeyButton } from "./HotkeyButton";
-import { UrlCache } from "../../../util/UrlCache";
-import { LiveSplitServer } from "../../../api/LiveSplitServer";
+import { type UrlCache } from "../../../util/UrlCache";
+import { type LiveSplitServer } from "../../../api/LiveSplitServer";
 import { showDialog } from "../Dialog";
 import { Switch } from "../Switch";
 import { ServerConnectionButton } from "./ServerConnectionButton";
@@ -20,6 +20,7 @@ import {
     ColumnUpdateTrigger,
 } from "./Column";
 import { Alignment } from "./Alignment";
+import { SubsplitDisplayMode } from "./SubsplitDisplayMode";
 import { OptionalTimingMethod } from "./TimingMethod";
 import { DeltaGradient, Gradient, ListGradient } from "./Gradient";
 import { Color, OptionalColor } from "./Color";
@@ -125,6 +126,7 @@ export interface SettingValueFactory<T> {
     fromColumnUpdateWith(value: string): T | null;
     fromColumnUpdateTrigger(value: string): T | null;
     fromLayoutDirection(value: string): T | null;
+    fromSubsplitDisplayMode(value: string): T | null;
     fromFont(
         name: string,
         style: string,
@@ -243,6 +245,11 @@ export class JsonSettingValueFactory implements SettingValueFactory<ExtendedSett
     ): ExtendedSettingsDescriptionValueJson | null {
         throw new Error("Not implemented");
     }
+    public fromSubsplitDisplayMode(
+        _: string,
+    ): ExtendedSettingsDescriptionValueJson | null {
+        throw new Error("Not implemented");
+    }
     public fromFont(
         _name: string,
         _style: string,
@@ -270,7 +277,7 @@ export class JsonSettingValueFactory implements SettingValueFactory<ExtendedSett
 }
 
 export class SettingsComponent<T> extends React.Component<Props<T>> {
-    public render() {
+    public override render() {
         const settingsRows: React.JSX.Element[] = [];
         const { factory } = this.props;
 
@@ -668,6 +675,17 @@ export class SettingsComponent<T> extends React.Component<Props<T>> {
                         lang={this.props.lang}
                     />
                 );
+            } else if ("SubsplitDisplayMode" in value) {
+                component = (
+                    <SubsplitDisplayMode
+                        value={value.SubsplitDisplayMode}
+                        setValue={(value) =>
+                            this.props.setValue(valueIndex, value)
+                        }
+                        factory={this.props.factory}
+                        lang={this.props.lang}
+                    />
+                );
             } else if ("ServerConnection" in value) {
                 component = (
                     <ServerConnectionButton
@@ -725,7 +743,7 @@ export class SettingsComponent<T> extends React.Component<Props<T>> {
                 this.props.lang,
             ),
             textInput: true,
-            defaultText: serverUrl,
+            ...(serverUrl === undefined ? {} : { defaultText: serverUrl }),
             buttons: [
                 resolve(Label.Connect, this.props.lang),
                 resolve(Label.Cancel, this.props.lang),

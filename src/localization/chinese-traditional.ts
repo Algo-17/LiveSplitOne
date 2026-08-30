@@ -1,4 +1,4 @@
-import { Label } from ".";
+import { type Label } from ".";
 import { resolveChineseSimplified } from "./chinese-simplified";
 
 export function resolveChineseTraditional(text: Label): string {
@@ -29,6 +29,7 @@ const TRADITIONAL_REPLACEMENTS: [string, string][] = [
     ["区域", "區域"],
     ["地区", "地區"],
     ["网络", "網路"],
+    ["群组", "群組"],
     ["选项", "選項"],
     ["比较", "比較"],
     ["对比", "對比"],

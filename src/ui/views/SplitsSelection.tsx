@@ -3,14 +3,14 @@ import {
     getSplitsInfos,
     getSplitsOrder,
     storeSplitsOrder,
-    SplitsInfo,
+    type SplitsInfo,
     deleteSplits as storageDeleteSplits,
     copySplits as storageCopySplits,
     loadSplits,
     storeRunWithoutDisposing,
     storeSplitsKey,
 } from "../../storage";
-import { Language, Run, Segment, TimerPhase } from "../../livesplit-core";
+import { type Language, Run, Segment, TimerPhase } from "../../livesplit-core";
 import { toast } from "react-toastify";
 import {
     openFileAsArrayBuffer,
@@ -18,10 +18,10 @@ import {
     convertFileToArrayBuffer,
     FILE_EXT_SPLITS,
 } from "../../util/FileUtil";
-import { Option, bug, maybeDisposeAndThen } from "../../util/OptionUtil";
+import { type Option, bug, maybeDisposeAndThen } from "../../util/OptionUtil";
 import { DragUpload } from "../components/DragUpload";
-import { GeneralSettings } from "./MainSettings";
-import { LSOCommandSink } from "../../util/LSOCommandSink";
+import { type GeneralSettings } from "./MainSettings";
+import { type LSOCommandSink } from "../../util/LSOCommandSink";
 import { showDialog } from "../components/Dialog";
 import { Label, resolve } from "../../localization";
 import {
@@ -66,7 +66,7 @@ export interface EditingInfo {
 
 export interface Props {
     commandSink: LSOCommandSink;
-    openedSplitsKey?: number;
+    openedSplitsKey: number | undefined;
     callbacks: Callbacks;
     generalSettings: GeneralSettings;
     splitsModified: boolean;
@@ -185,9 +185,9 @@ function View({
     lang,
 }: {
     commandSink: LSOCommandSink;
-    openedSplitsKey?: number;
+    openedSplitsKey: number | undefined;
     callbacks: Callbacks;
-    splitsInfos?: Array<[number, SplitsInfo]>;
+    splitsInfos: Array<[number, SplitsInfo]> | undefined;
     refreshDb: () => Promise<void>;
     reorderSplits: (fromKey: number, toKey: number | undefined) => void;
     lang: Language | undefined;
@@ -510,7 +510,7 @@ function SavedSplitsRow({
     onDragEnd,
     lang,
 }: {
-    openedSplitsKey?: number;
+    openedSplitsKey: number | undefined;
     splitsKey: number;
     info: SplitsInfo;
     openSplits: (key: number) => void;

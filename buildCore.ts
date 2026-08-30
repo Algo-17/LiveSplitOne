@@ -1,5 +1,5 @@
-import { execSync } from "child_process";
-import fs from "fs";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
 
 let toolchain = "";
 let profile = "debug";
@@ -8,8 +8,24 @@ let cargoFlags = "";
 let rustFlags =
     "-C target-feature=+bulk-memory,+mutable-globals,+nontrapping-fptoint,+sign-ext,+simd128,+extended-const,+multivalue,+reference-types,+tail-call";
 let wasmBindgenFlags = "--encode-into always --target web --reference-types";
-let target = "wasm32-unknown-unknown";
-let targetFolder = target;
+const target = "wasm32-unknown-unknown";
+const targetFolder = target;
+const coreFeatures = [
+    "parsing",
+    "run-saving",
+    "timing",
+    "run-editing",
+    "layouts",
+    "layout-editing",
+    "hotkeys",
+    "web-command-sink",
+    "server-protocol",
+    "web-rendering",
+    "therun-gg",
+    "localization",
+    "image-shrinking",
+].join(",");
+const bindingsDir = "target/livesplit-one-bindings";
 
 if (process.argv.some((v) => v === "--max-opt")) {
     // Do a fully optimized build ready for deployment.
@@ -57,13 +73,16 @@ if (process.argv.some((v) => v === "--nightly")) {
     }
 }
 
-execSync(`cargo ${toolchain} run`, {
-    cwd: "livesplit-core/capi/bind_gen",
-    stdio: "inherit",
-});
+execSync(
+    `cargo ${toolchain} run -- --no-default-features --features ${coreFeatures} --output-dir ${bindingsDir}`,
+    {
+        cwd: "livesplit-core/capi/bind_gen",
+        stdio: "inherit",
+    },
+);
 
 execSync(
-    `cargo ${toolchain} rustc -p livesplit-core-capi --crate-type cdylib --features wasm-web,web-rendering,therun-gg --target ${target} ${cargoFlags}`,
+    `cargo ${toolchain} rustc -p livesplit-core-capi --crate-type cdylib --no-default-features --features ${coreFeatures} --target ${target} ${cargoFlags}`,
     {
         cwd: "livesplit-core",
         stdio: "inherit",
@@ -82,9 +101,9 @@ execSync(
 );
 
 fs.createReadStream(
-    "livesplit-core/capi/bindings/wasm_bindgen/web/index.ts",
+    `livesplit-core/capi/bind_gen/${bindingsDir}/wasm_bindgen/web/index.ts`,
 ).pipe(fs.createWriteStream("src/livesplit-core/index.ts"));
 
 fs.createReadStream(
-    "livesplit-core/capi/bindings/wasm_bindgen/web/preload.ts",
+    `livesplit-core/capi/bind_gen/${bindingsDir}/wasm_bindgen/web/preload.ts`,
 ).pipe(fs.createWriteStream("src/livesplit-core/preload.ts"));

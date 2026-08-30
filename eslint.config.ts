@@ -1,0 +1,47 @@
+import tseslint from "typescript-eslint";
+
+export default tseslint.config({
+    ignores: ["src/livesplit-core/**", "src/type-definitions/**"],
+    extends: tseslint.configs.recommendedTypeChecked,
+    rules: {
+        "@typescript-eslint/consistent-type-exports": "error",
+        "@typescript-eslint/consistent-type-imports": [
+            "error",
+            { fixStyle: "inline-type-imports" },
+        ],
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-floating-promises": "off",
+        "@typescript-eslint/no-misused-promises": "off",
+        "@typescript-eslint/no-unsafe-argument": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "@typescript-eslint/no-unused-vars": [
+            "error",
+            {
+                argsIgnorePattern: "^_",
+                destructuredArrayIgnorePattern: "^_",
+                varsIgnorePattern: "^_",
+                caughtErrorsIgnorePattern: "^_",
+            },
+        ],
+    },
+    languageOptions: {
+        parserOptions: {
+            // The project service only discovers files from conventionally
+            // named tsconfig.json files. These root-level scripts instead
+            // belong to tsconfig.node.json, so opt them into the service's
+            // default project for editor linting.
+            projectService: {
+                allowDefaultProject: [
+                    "buildCore.ts",
+                    "eslint.config.ts",
+                    "vite.config.ts",
+                ],
+                defaultProject: "tsconfig.node.json",
+            },
+            tsconfigRootDir: import.meta.dirname,
+        },
+    },
+});

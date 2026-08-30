@@ -5,13 +5,27 @@ import babel from "@rolldown/plugin-babel";
 import { defineConfig, type Plugin, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import favicons from "favicons";
+import favicons, { type FaviconOptions } from "favicons";
 
 type Contributor = {
     contributions: number;
     id: number;
     login: string;
     type: string;
+};
+
+type FaviconIconOverride = {
+    readonly background?: string | boolean;
+    readonly offset?: number;
+};
+
+type FaviconOptionsWithOverrides = Omit<FaviconOptions, "icons"> & {
+    readonly icons?: {
+        readonly appleIcon?: FaviconIconOverride | boolean | string[];
+        readonly appleStartup?: FaviconIconOverride | boolean | string[];
+        readonly windows?: FaviconIconOverride | boolean | string[];
+        readonly yandex?: FaviconIconOverride | boolean | string[];
+    };
 };
 
 let faviconGenerationPromise: Promise<void> | undefined;
@@ -23,7 +37,7 @@ async function generateFavicons() {
 
     await fs.mkdir(outputDir, { recursive: true });
 
-    const result = await favicons(source, {
+    const options = {
         path: "/icons/",
         appName: "LiveSplit One",
         appDescription:
@@ -39,16 +53,17 @@ async function generateFavicons() {
         appleStatusBarStyle: "black-translucent",
         manifestMaskable: path.resolve("src", "assets", "maskable.svg"),
         icons: {
-            appleIcon: {
-                offset: 10,
-            },
-            appleStartup: {
-                offset: 15,
-            },
+            appleIcon: { offset: 10 },
+            appleStartup: { offset: 15 },
             windows: false,
             yandex: false,
-        } as any,
-    });
+        },
+    } satisfies FaviconOptionsWithOverrides;
+
+    // Favicons documents partial icon overrides, but its declaration exposes
+    // the internal fully resolved icon shape. Keep that mismatch confined to
+    // this API boundary instead of weakening the configuration with `any`.
+    const result = await favicons(source, options as FaviconOptions);
 
     faviconHtmlTags = result.html;
 
@@ -63,9 +78,19 @@ async function generateFavicons() {
 
     const screenshotDefs = [
         { file: "screenshot-wide.png", formFactor: "wide", sizes: "1280x720" },
-        { file: "screenshot-narrow.png", formFactor: "narrow", sizes: "469x834" },
+        {
+            file: "screenshot-narrow.png",
+            formFactor: "narrow",
+            sizes: "469x834",
+        },
     ];
-    const screenshots: { src: string; sizes: string; type: string; form_factor: string; label: string }[] = [];
+    const screenshots: {
+        src: string;
+        sizes: string;
+        type: string;
+        form_factor: string;
+        label: string;
+    }[] = [];
     for (const def of screenshotDefs) {
         const srcPath = path.resolve("src", "assets", def.file);
         try {
@@ -103,21 +128,21 @@ function parseChangelog() {
         .map((commit: string) => {
             const dateString = commit.match(/^Date:   (.*)$/m)?.[1];
             if (!dateString) {
-                throw `Date not found in commit:\n${commit}`;
+                throw new Error(`Date not found in commit:\n${commit}`);
             }
             const dateValue = new Date(dateString);
             const date = dateValue.toISOString().split("T")[0];
             const id = commit.substring(0, commit.indexOf("\n"));
             const changelogEntries = parseChangelogEntries(commit);
             if (changelogEntries.length === 0) {
-                throw `Changelog not found in commit:\n${commit}`;
+                throw new Error(`Changelog not found in commit:\n${commit}`);
             }
             const messages: Record<string, string> = {};
             for (const entry of changelogEntries) {
                 messages[entry.lang] = entry.message;
             }
             const message =
-                messages.en ??
+                messages["en"] ??
                 messages["en-US"] ??
                 Object.values(messages)[0] ??
                 "";
@@ -142,7 +167,7 @@ function parseChangelogEntries(commit: string) {
                 entries.push(current);
             }
             const lang = match[1] || "en";
-            current = { lang, message: match[2] };
+            current = { lang, message: match[2] ?? "" };
             continue;
         }
         if (current && line.startsWith("    ")) {
@@ -186,11 +211,11 @@ function preloadPlugin() {
     return <Plugin>{
         name: "lso-preload-plugin",
         enforce: "post",
-        configResolved(config: any) {
+        configResolved(config) {
             base = config.base || "/";
         },
         transformIndexHtml: {
-            order: "post" as const,
+            order: "post",
             handler(html: string) {
                 // Inject with a placeholder that will replace
                 // with the hashed URL.
@@ -200,21 +225,28 @@ function preloadPlugin() {
                     `<link rel="preload" href="__FONT_FIRA_URL__" as="font" type="font/woff" crossorigin>`,
                 ].join("\n    ");
                 const script = `<script>globalThis.__lscPreload=WebAssembly.compileStreaming(fetch("__WASM_PRELOAD_URL__"))</script>`;
-                return html.replace("<head>", `<head>\n    ${preloads}\n    ${script}`);
+                return html.replace(
+                    "<head>",
+                    `<head>\n    ${preloads}\n    ${script}`,
+                );
             },
         },
-        generateBundle(_options: any, bundle: any) {
+        generateBundle(_options, bundle) {
             const wasmEntry = Object.keys(bundle).find((key: string) =>
                 key.endsWith(".wasm"),
             );
-            const timerFont = Object.keys(bundle).find((key: string) =>
-                key.endsWith(".woff") && /(?:^|[\\/])timer[^/\\]*\.woff$/.test(key),
+            const timerFont = Object.keys(bundle).find(
+                (key: string) =>
+                    key.endsWith(".woff") &&
+                    /(?:^|[\\/])timer[^/\\]*\.woff$/.test(key),
             );
-            const firaFont = Object.keys(bundle).find((key: string) =>
-                key.endsWith(".woff") && /(?:^|[\\/])FiraSans[^/\\]*\.woff$/.test(key),
+            const firaFont = Object.keys(bundle).find(
+                (key: string) =>
+                    key.endsWith(".woff") &&
+                    /(?:^|[\\/])FiraSans[^/\\]*\.woff$/.test(key),
             );
 
-            for (const chunk of Object.values(bundle) as any[]) {
+            for (const chunk of Object.values(bundle)) {
                 if (
                     chunk.type === "asset" &&
                     chunk.fileName.endsWith(".html")
@@ -257,8 +289,11 @@ export default defineConfig(async ({ mode }) => {
     const changelog = parseChangelog();
     try {
         const [lsoContributorsList, coreContributorsList] = await Promise.all([
-            getContributorsForRepo("LiveSplitOne", process.env.GITHUB_TOKEN),
-            getContributorsForRepo("livesplit-core", process.env.GITHUB_TOKEN),
+            getContributorsForRepo("LiveSplitOne", process.env["GITHUB_TOKEN"]),
+            getContributorsForRepo(
+                "livesplit-core",
+                process.env["GITHUB_TOKEN"],
+            ),
         ]);
 
         const coreContributorsMap: Record<string, Contributor> = {};
@@ -319,47 +354,45 @@ export default defineConfig(async ({ mode }) => {
                 ],
             }),
             ...(!isTauri
-                ? [
-                    {
-                        name: "inject-generated-favicons",
-                        transformIndexHtml(html: string) {
-                            if (faviconHtmlTags.length === 0) {
-                                return html;
-                            }
+                ? ([
+                      {
+                          name: "inject-generated-favicons",
+                          transformIndexHtml(html: string) {
+                              if (faviconHtmlTags.length === 0) {
+                                  return html;
+                              }
 
-                            return html.replace(
-                                "</head>",
-                                `${faviconHtmlTags.join("\n")}\n</head>`,
-                            );
-                        },
-                    },
-                ] as Plugin[]
+                              return html.replace(
+                                  "</head>",
+                                  `${faviconHtmlTags.join("\n")}\n</head>`,
+                              );
+                          },
+                      },
+                  ] as Plugin[])
                 : []),
             ...(!isTauri && isProduction
                 ? [
-                    VitePWA({
-                        registerType: "autoUpdate",
-                        injectRegister: "inline",
-                        manifest: false,
-                        filename: "service-worker.js",
-                        workbox: {
-                            clientsClaim: true,
-                            skipWaiting: true,
-                            maximumFileSizeToCacheInBytes: 100 * 1024 * 1024,
-                            globPatterns: [
-                                "**/*.{js,css,html,wasm,woff}",
-                            ],
-                            globIgnores: ["icons/**"],
-                            runtimeCaching: [
-                                {
-                                    urlPattern: ({ url }: { url: URL }) =>
-                                        url.pathname.startsWith("/icons/"),
-                                    handler: "CacheFirst" as const,
-                                },
-                            ],
-                        },
-                    }),
-                ]
+                      VitePWA({
+                          registerType: "autoUpdate",
+                          injectRegister: "inline",
+                          manifest: false,
+                          filename: "service-worker.js",
+                          workbox: {
+                              clientsClaim: true,
+                              skipWaiting: true,
+                              maximumFileSizeToCacheInBytes: 100 * 1024 * 1024,
+                              globPatterns: ["**/*.{js,css,html,wasm,woff}"],
+                              globIgnores: ["icons/**"],
+                              runtimeCaching: [
+                                  {
+                                      urlPattern: ({ url }: { url: URL }) =>
+                                          url.pathname.startsWith("/icons/"),
+                                      handler: "CacheFirst" as const,
+                                  },
+                              ],
+                          },
+                      }),
+                  ]
                 : []),
         ],
         define: {
@@ -377,10 +410,9 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             target: "esnext",
-            outDir:
-                isTauri
-                    ? path.join("src-tauri", "target", "dist")
-                    : path.join("dist"),
+            outDir: isTauri
+                ? path.join("src-tauri", "target", "dist")
+                : path.join("dist"),
             emptyOutDir: true,
             chunkSizeWarningLimit: 1024,
         },
