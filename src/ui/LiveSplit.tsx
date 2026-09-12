@@ -52,7 +52,7 @@ import {
     TheRunClient,
     WebRenderer,
 } from "../livesplit-core/livesplit_core";
-import { type LiveSplitServer } from "../api/LiveSplitServer";
+import { LiveSplitServer } from "../api/LiveSplitServer";
 import { LSOCommandSink } from "../util/LSOCommandSink";
 import { DialogContainer } from "./components/Dialog";
 import { createHotkeys, type HotkeyImplementation } from "../platform/Hotkeys";

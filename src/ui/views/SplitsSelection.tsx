@@ -234,7 +234,7 @@ function View({
             const indicator = document.createElement("div");
             indicator.classList.add(classes.dropIndicator);
             if (dropAfter) indicator.classList.add(classes.dropIndicatorEnd);
-            indicator.dataset.dropIndicator = "";
+            indicator.dataset["dropIndicator"] = "";
             if (dropAfter) {
                 row.append(indicator);
             } else {
@@ -255,10 +255,10 @@ function View({
             if (dragKeyRef.current !== null && targetRow) {
                 if (dropAfterRef.current) {
                     const nextRow = targetRow.nextElementSibling as HTMLElement | null;
-                    const toKey = nextRow ? Number(nextRow.dataset.splitsKey) : undefined;
+                    const toKey = nextRow ? Number(nextRow.dataset["splitsKey"]) : undefined;
                     reorderSplitsRef.current(dragKeyRef.current, toKey);
                 } else {
-                    const toKey = Number(targetRow.dataset.splitsKey);
+                    const toKey = Number(targetRow.dataset["splitsKey"]);
                     if (dragKeyRef.current !== toKey) {
                         reorderSplitsRef.current(dragKeyRef.current, toKey);
                     }
